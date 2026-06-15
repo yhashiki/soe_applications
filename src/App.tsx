@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useZayavki } from './storage'
-import { exportToCsv } from './export'
+import { exportToPdf } from './export'
 import type { Branch, Status, Zayavka } from './types'
 import NewZayavkaForm from './components/NewZayavkaForm'
 import ZayavkaRow from './components/ZayavkaRow'
@@ -30,6 +30,23 @@ export default function App() {
     setItems((prev) => prev.filter((z) => z.id !== id))
   }
 
+  // Экспорт = завершение смены: выгружаем PDF и очищаем список,
+  // чтобы следующий дежурный начинал с чистого листа.
+  function handleExportAndClear() {
+    if (items.length === 0) return
+    const ok = window.confirm(
+      'При экспортировании списка в PDF он будет очищен.\n' +
+        'Вы уверены, что хотите экспортировать список в PDF?',
+    )
+    if (!ok) return
+
+    // PDF формируется синхронно, поэтому очищать список можно сразу после.
+    const exported = exportToPdf(items)
+    if (exported) {
+      setItems([])
+    }
+  }
+
   const counts = useMemo(() => {
     return {
       total: items.length,
@@ -51,12 +68,12 @@ export default function App() {
             Контроль заявок Дежурного СОЭ
           </h1>
           <button
-            onClick={() => exportToCsv(items)}
+            onClick={handleExportAndClear}
             disabled={items.length === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-white/25 px-4 py-2 text-sm font-medium transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <DownloadIcon className="h-4 w-4" />
-            Экспорт оставшихся заявок
+            Экспорт в PDF
           </button>
         </div>
       </header>
@@ -84,7 +101,7 @@ export default function App() {
               Заявок пока нет. Создайте первую заявку через форму выше.
             </div>
           ) : (
-            <div className="space-y-3 overflow-hidden rounded-xl">
+            <div className="space-y-3 rounded-xl">
               {items.map((z) => (
                 <ZayavkaRow key={z.id} zayavka={z} onSetStatus={setStatus} onDelete={deleteZayavka} />
               ))}
@@ -92,7 +109,7 @@ export default function App() {
           )}
 
           <p className="mt-5 text-sm text-slate-400">
-            Экспортируются только активные заявки (неудалённые). Формат файла: CSV — открывается в Excel.
+            Экспорт = передача смены: формируется PDF со всеми активными заявками, после чего список очищается. В диалоге печати выберите «Сохранить как PDF».
           </p>
         </section>
       </main>
